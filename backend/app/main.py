@@ -1,11 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Form
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List, Optional
+from pydantic import BaseModel
+from datetime import datetime
 import os
 
 from .database import get_db, create_tables
-from .models import Propriedade, Bairro, TipoProprietario, Finalidade, Endereco
+from .models import Propriedade, Bairro, TipoProprietario, Finalidade, FatorAntiguidade, PrecoReferencia, Endereco
 from .tax_calculator import TaxCalculator
 from .data_importer import DataImporter
 
@@ -14,6 +16,28 @@ app = FastAPI(
     description="Sistema de cálculo de impostos prediais para Maputo",
     version="1.0.0"
 )
+
+class PropertyCreateRequest(BaseModel):
+    ncontr: int
+    nome: str
+    matriz: str | None = None
+    valpatr: float
+    cod_bairro: int
+    proprietar: int | None = None
+    nuit: str | None = None
+    endereco_cod: str | None = None
+    finalidade_id: int | None = None
+    are_tereno: str | None = None
+    are_constr: str | None = None
+    factant: str | None = None
+
+class TaxSimulationRequest(BaseModel):
+    built_area: float
+    construction_price: float | None = None
+    age_factor_code: str | None = None
+    land_area: float = 0.0
+    neighborhood_code: int
+    property_type: str = "residential"
 
 # Disable CORS. Do not remove this for full-stack development.
 app.add_middleware(
@@ -146,7 +170,8 @@ def get_neighborhoods(db: Session = Depends(get_db)):
     return [
         {
             "id": bairro.id,
-            "cod_b": bairro.cod_b,
+            "cod_b": bairro.cod_b1,
+            "cod_b1": bairro.cod_b1,
             "descricao": bairro.descricao,
             "fact": bairro.fact,
             "cod_dist_urb": bairro.cod_dist_urb
@@ -190,27 +215,136 @@ def get_statistics(db: Session = Depends(get_db)):
 
 @app.post("/api/calculate-tax")
 def calculate_custom_tax(
-    base_value: float,
-    neighborhood_code: int,
-    age_factor_code: str,
-    property_type: int = 1,
+    base_value: float = Form(...),
+    neighborhood_code: int = Form(...),
+    age_factor_code: str = Form(...),
+    property_type: str = Form("residential"),
     db: Session = Depends(get_db)
 ):
-    """Calculate tax with custom parameters"""
+    """Calculate tax with custom parameters using IPRA formula"""
     try:
         calculator = TaxCalculator(db)
         
-        neighborhood_factor = calculator.get_neighborhood_factor(neighborhood_code)
-        age_factor = calculator.get_age_factor(age_factor_code, property_type)
+        built_area = base_value / 15000.0 if base_value > 0 else 100.0
+        construction_price = calculator.get_construction_price()
+        age_factor = calculator.get_age_factor(age_factor_code, 2 if property_type == "commercial" else 1)
+        location_factor = calculator.get_neighborhood_factor(neighborhood_code)
         
-        tax_amount = base_value * neighborhood_factor * age_factor
+        result = calculator.calculate_ipra_tax(
+            built_area=built_area,
+            construction_price=construction_price,
+            age_factor=age_factor,
+            land_area=0.0,
+            location_factor=location_factor,
+            property_type=property_type
+        )
         
         return {
             "base_value": base_value,
-            "neighborhood_factor": neighborhood_factor,
+            "neighborhood_factor": location_factor,
             "age_factor": age_factor,
-            "tax_amount": round(tax_amount, 2),
-            "calculation": f"{base_value} × {neighborhood_factor} × {age_factor} = {round(tax_amount, 2)}"
+            "tax_amount": result["ipra_tax"],
+            "calculation": result["formula_details"]["calculation"]
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error calculating tax: {str(e)}")
+
+@app.post("/api/properties")
+def create_property(property_data: PropertyCreateRequest, db: Session = Depends(get_db)):
+    """Create a new property"""
+    try:
+        print(f"DEBUG: Received property data: {property_data}")
+        print(f"DEBUG: NCONTR: {property_data.ncontr}, type: {type(property_data.ncontr)}")
+        print(f"DEBUG: cod_bairro: {property_data.cod_bairro}, type: {type(property_data.cod_bairro)}")
+        
+        existing = db.query(Propriedade).filter(Propriedade.ncontr == property_data.ncontr).first()
+        if existing:
+            print(f"DEBUG: Property with NCONTR {property_data.ncontr} already exists")
+            raise HTTPException(status_code=400, detail="Property with this NCONTR already exists")
+        
+        bairro = db.query(Bairro).filter(Bairro.cod_b1 == property_data.cod_bairro).first()
+        if not bairro:
+            raise HTTPException(status_code=400, detail="Invalid neighborhood code")
+        
+        new_property = Propriedade(
+            ncontr=property_data.ncontr,
+            nome=property_data.nome,
+            matriz=property_data.matriz,
+            valpatr=property_data.valpatr,
+            cod_bairro=property_data.cod_bairro,
+            proprietar=property_data.proprietar,
+            nuit=property_data.nuit,
+            endereco_cod=property_data.endereco_cod,
+            finalidade_id=property_data.finalidade_id,
+            are_tereno=property_data.are_tereno,
+            are_constr=property_data.are_constr,
+            factant=property_data.factant,
+            data_cria=datetime.now()
+        )
+        
+        db.add(new_property)
+        db.commit()
+        db.refresh(new_property)
+        
+        return {"message": "Property created successfully", "id": new_property.id, "ncontr": new_property.ncontr}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error creating property: {str(e)}")
+
+@app.post("/api/simulate-tax")
+def simulate_tax(simulation_data: TaxSimulationRequest, db: Session = Depends(get_db)):
+    """Simulate tax calculation with custom parameters"""
+    try:
+        calculator = TaxCalculator(db)
+        
+        construction_price = simulation_data.construction_price or calculator.get_construction_price()
+        
+        age_factor = 1.0
+        if simulation_data.age_factor_code:
+            finalidade_id = 2 if simulation_data.property_type == "commercial" else 1
+            age_factor = calculator.get_age_factor(simulation_data.age_factor_code, finalidade_id)
+        
+        location_factor = calculator.get_neighborhood_factor(simulation_data.neighborhood_code)
+        
+        result = calculator.calculate_ipra_tax(
+            built_area=simulation_data.built_area,
+            construction_price=construction_price,
+            age_factor=age_factor,
+            land_area=simulation_data.land_area,
+            location_factor=location_factor,
+            property_type=simulation_data.property_type
+        )
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error simulating tax: {str(e)}")
+
+@app.get("/api/age-factors")
+def get_age_factors(db: Session = Depends(get_db)):
+    """Get all age factors"""
+    age_factors = db.query(FatorAntiguidade).all()
+    return [
+        {
+            "id": f.id,
+            "cod": f.cod,
+            "id_range": f.id_range,
+            "tiphab": f.tiphab,
+            "tipcom": f.tipcom
+        }
+        for f in age_factors
+    ]
+
+@app.get("/api/addresses")
+def get_addresses(db: Session = Depends(get_db)):
+    """Get all addresses"""
+    addresses = db.query(Endereco).all()
+    return [
+        {
+            "id": e.id,
+            "cod_r": e.cod_r,
+            "morada": e.morada
+        }
+        for e in addresses
+    ]
