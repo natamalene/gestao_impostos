@@ -65,7 +65,7 @@ def get_properties(
     db: Session = Depends(get_db)
 ):
     """Get list of properties with pagination and search"""
-    query = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True)
+    query = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b, isouter=True)
     
     if search:
         query = query.filter(
@@ -89,6 +89,7 @@ def get_properties(
                 "matriz": prop.matriz,
                 "valpatr": prop.valpatr,
                 "cod_bairro": prop.cod_bairro,
+                "bairro": prop.bairro.descricao if prop.bairro else f"Bairro {prop.cod_bairro}",
                 "proprietar": prop.proprietar,
                 "nuit": prop.nuit,
                 "localizacao": prop.endereco.morada if prop.endereco else prop.cod_localizaca
@@ -100,7 +101,7 @@ def get_properties(
 @app.get("/api/properties/{property_id}")
 def get_property(property_id: int, db: Session = Depends(get_db)):
     """Get detailed information about a specific property"""
-    property = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).filter(Propriedade.id == property_id).first()
+    property = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b, isouter=True).filter(Propriedade.id == property_id).first()
     if not property:
         raise HTTPException(status_code=404, detail="Property not found")
     
@@ -111,6 +112,7 @@ def get_property(property_id: int, db: Session = Depends(get_db)):
         "matriz": property.matriz,
         "valpatr": property.valpatr,
         "cod_bairro": property.cod_bairro,
+        "bairro": property.bairro.descricao if property.bairro else f"Bairro {property.cod_bairro}",
         "proprietar": property.proprietar,
         "nuit": property.nuit,
         "cod_localizaca": property.cod_localizaca,
