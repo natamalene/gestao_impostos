@@ -48,13 +48,13 @@ class DataImporter:
         
         imported_count = 0
         for _, row in df.iterrows():
-            existing = self.db.query(Bairro).filter(Bairro.cod_b == int(row['Cod_B'])).first()
+            existing = self.db.query(Bairro).filter(Bairro.cod_b1 == int(row['Cod_B1'])).first()
             if existing:
                 continue
                 
             bairro = Bairro(
                 cod_b1=int(row['Cod_B1']),
-                cod_b=int(row['Cod_B']),
+                cod_b=int(row['Cod_B1']),
                 descricao=str(row['Descricao']),
                 cod_dist_urb=str(row['Cod_DistUrb']) if pd.notna(row['Cod_DistUrb']) else None,
                 fact=float(row['fact'])

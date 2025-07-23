@@ -65,7 +65,7 @@ def get_properties(
     db: Session = Depends(get_db)
 ):
     """Get list of properties with pagination and search"""
-    query = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b, isouter=True)
+    query = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b1, isouter=True)
     
     if search:
         query = query.filter(
@@ -101,7 +101,7 @@ def get_properties(
 @app.get("/api/properties/{property_id}")
 def get_property(property_id: int, db: Session = Depends(get_db)):
     """Get detailed information about a specific property"""
-    property = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b, isouter=True).filter(Propriedade.id == property_id).first()
+    property = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b1, isouter=True).filter(Propriedade.id == property_id).first()
     if not property:
         raise HTTPException(status_code=404, detail="Property not found")
     

@@ -76,7 +76,7 @@ class Propriedade(Base):
     qrt = Column(String(50))
     nu_casa = Column(String(50))
     cod_distr_muni = Column(Float)
-    cod_bairro = Column(Integer, ForeignKey("bairros.cod_b"))
+    cod_bairro = Column(Integer, ForeignKey("bairros.cod_b1"))
     tiphab = Column(String(10))
     fl = Column(Float)
     recolec = Column(Float)
