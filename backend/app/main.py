@@ -5,7 +5,7 @@ from typing import List, Optional
 import os
 
 from .database import get_db, create_tables
-from .models import Propriedade, Bairro, TipoProprietario, Finalidade
+from .models import Propriedade, Bairro, TipoProprietario, Finalidade, Endereco
 from .tax_calculator import TaxCalculator
 from .data_importer import DataImporter
 
@@ -65,7 +65,7 @@ def get_properties(
     db: Session = Depends(get_db)
 ):
     """Get list of properties with pagination and search"""
-    query = db.query(Propriedade)
+    query = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True)
     
     if search:
         query = query.filter(
@@ -90,7 +90,8 @@ def get_properties(
                 "valpatr": prop.valpatr,
                 "cod_bairro": prop.cod_bairro,
                 "proprietar": prop.proprietar,
-                "nuit": prop.nuit
+                "nuit": prop.nuit,
+                "localizacao": prop.endereco.morada if prop.endereco else prop.cod_localizaca
             }
             for prop in properties
         ]
@@ -99,7 +100,7 @@ def get_properties(
 @app.get("/api/properties/{property_id}")
 def get_property(property_id: int, db: Session = Depends(get_db)):
     """Get detailed information about a specific property"""
-    property = db.query(Propriedade).filter(Propriedade.id == property_id).first()
+    property = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).filter(Propriedade.id == property_id).first()
     if not property:
         raise HTTPException(status_code=404, detail="Property not found")
     
@@ -113,6 +114,7 @@ def get_property(property_id: int, db: Session = Depends(get_db)):
         "proprietar": property.proprietar,
         "nuit": property.nuit,
         "cod_localizaca": property.cod_localizaca,
+        "localizacao": property.endereco.morada if property.endereco else property.cod_localizaca,
         "nu_entrada": property.nu_entrada,
         "andar_n": property.andar_n,
         "flat": property.flat,

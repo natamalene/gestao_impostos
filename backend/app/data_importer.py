@@ -224,6 +224,7 @@ class DataImporter:
                         matriz=str(row['MATRIZ']) if pd.notna(row['MATRIZ']) else None,
                         nome=str(row['NOME']) if pd.notna(row['NOME']) else None,
                         cod_localizaca=str(row['Cod_LOCALIZACA']) if pd.notna(row['Cod_LOCALIZACA']) else None,
+                        endereco_cod=str(row['Cod_LOCALIZACA']) if pd.notna(row['Cod_LOCALIZACA']) else None,
                         nu_entrada=str(row['NU_ENTRADA']) if pd.notna(row['NU_ENTRADA']) else None,
                         andar_n=str(row['Andar_N']) if pd.notna(row['Andar_N']) else None,
                         flat=str(row['Flat']) if pd.notna(row['Flat']) else None,
