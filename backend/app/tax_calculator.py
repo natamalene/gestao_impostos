@@ -115,13 +115,13 @@ class TaxCalculator:
         total_properties = self.db.query(Propriedade).count()
         
         sample_taxes = self.calculate_bulk_taxes(1000)
-        valid_taxes = [t for t in sample_taxes if "tax_amount" in t]
+        valid_taxes = [t for t in sample_taxes if "ipra_tax" in t]
         
         if valid_taxes:
-            total_tax = sum(t["tax_amount"] for t in valid_taxes)
+            total_tax = sum(t["ipra_tax"] for t in valid_taxes)
             avg_tax = total_tax / len(valid_taxes)
-            max_tax = max(t["tax_amount"] for t in valid_taxes)
-            min_tax = min(t["tax_amount"] for t in valid_taxes)
+            max_tax = max(t["ipra_tax"] for t in valid_taxes)
+            min_tax = min(t["ipra_tax"] for t in valid_taxes)
         else:
             total_tax = avg_tax = max_tax = min_tax = 0
         
