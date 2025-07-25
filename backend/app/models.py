@@ -86,6 +86,7 @@ class Propriedade(Base):
     factant = Column(String(10))
     are_tereno = Column(String(50))
     are_constr = Column(String(50))
+    finalidade_id = Column(Integer, ForeignKey("finalidades.codigo"), nullable=True)
     data_cria = Column(DateTime)
     data_cr_al = Column(String(50))
     hora_cr_al = Column(String(50))
