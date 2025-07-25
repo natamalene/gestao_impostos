@@ -20,7 +20,6 @@ app = FastAPI(
 class PropertyCreateRequest(BaseModel):
     nome: str
     matriz: str | None = None
-    valpatr: float
     cod_bairro: int
     proprietar: int | None = None
     nuit: str | None = None
@@ -251,7 +250,7 @@ def calculate_custom_tax(
 
 @app.post("/api/properties")
 def create_property(property_data: PropertyCreateRequest, db: Session = Depends(get_db)):
-    """Create a new property with auto-generated CODIGO"""
+    """Create a new property with auto-generated CODIGO and auto-calculated Valor Patrimonial"""
     try:
         max_codigo = db.query(Propriedade).order_by(Propriedade.ncontr.desc()).first()
         new_codigo = (max_codigo.ncontr + 1) if max_codigo else 1000000
@@ -265,11 +264,30 @@ def create_property(property_data: PropertyCreateRequest, db: Session = Depends(
             if not age_factor:
                 raise HTTPException(status_code=400, detail="Invalid age factor code")
         
+        calculator = TaxCalculator(db)
+        built_area = float(property_data.are_constr) if property_data.are_constr else 100.0
+        logradouro_area = float(property_data.are_tereno) if property_data.are_tereno else 0.0
+        construction_price = calculator.get_construction_price(2025)
+        age_factor = calculator.get_age_factor(property_data.factant, property_data.finalidade_id) if property_data.factant else 1.0
+        location_factor = calculator.get_neighborhood_factor(property_data.cod_bairro)
+        property_type = "commercial" if property_data.finalidade_id == 2 else "residential"
+        
+        ipra_result = calculator.calculate_ipra_tax(
+            built_area=built_area,
+            construction_price=construction_price,
+            age_factor=age_factor,
+            logradouro_area=logradouro_area,
+            location_factor=location_factor,
+            property_type=property_type
+        )
+        
+        calculated_valpatr = ipra_result["patrimonial_value"]
+        
         new_property = Propriedade(
             ncontr=new_codigo,
             nome=property_data.nome,
             matriz=property_data.matriz,
-            valpatr=property_data.valpatr,
+            valpatr=calculated_valpatr,
             cod_bairro=property_data.cod_bairro,
             proprietar=property_data.proprietar,
             nuit=property_data.nuit,
@@ -285,7 +303,12 @@ def create_property(property_data: PropertyCreateRequest, db: Session = Depends(
         db.commit()
         db.refresh(new_property)
         
-        return {"message": "Property created successfully", "id": new_property.id, "codigo": new_property.ncontr}
+        return {
+            "message": "Property created successfully", 
+            "id": new_property.id, 
+            "codigo": new_property.ncontr,
+            "valor_patrimonial": calculated_valpatr
+        }
     except HTTPException:
         raise
     except Exception as e:
