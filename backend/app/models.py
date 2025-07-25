@@ -32,8 +32,6 @@ class Finalidade(Base):
     id = Column(Integer, primary_key=True, index=True)
     codigo = Column(Integer, unique=True, nullable=False)
     descricao = Column(String(255), nullable=False)
-    
-    propriedades = relationship("Propriedade", back_populates="finalidade")
 
 class FatorAntiguidade(Base):
     __tablename__ = "fatores_antiguidade"
@@ -57,8 +55,6 @@ class Endereco(Base):
     id = Column(Integer, primary_key=True, index=True)
     cod_r = Column(String(10), unique=True, nullable=False)
     morada = Column(String(255), nullable=False)
-    
-    propriedades = relationship("Propriedade", back_populates="endereco")
 
 class Propriedade(Base):
     __tablename__ = "propriedades"
@@ -93,10 +89,16 @@ class Propriedade(Base):
     data_cria = Column(DateTime)
     data_cr_al = Column(String(50))
     hora_cr_al = Column(String(50))
-    finalidade_id = Column(Integer, ForeignKey("finalidades.codigo"))
-    endereco_cod = Column(String(10), ForeignKey("enderecos.cod_r"))
     
     bairro = relationship("Bairro", back_populates="propriedades")
     tipo_proprietario = relationship("TipoProprietario", back_populates="propriedades")
-    finalidade = relationship("Finalidade", back_populates="propriedades")
-    endereco = relationship("Endereco", back_populates="propriedades")
+    endereco = relationship("Endereco", primaryjoin="Propriedade.cod_localizaca == foreign(Endereco.cod_r)", uselist=False)
+
+
+class FimipaIpra(Base):
+    __tablename__ = "fimipa_ipra"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    ncontr = Column(Integer, unique=True, nullable=False, index=True)
+    iimppag = Column(Float, nullable=True)
+    ano = Column(Integer, nullable=False, default=2025)

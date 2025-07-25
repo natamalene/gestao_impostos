@@ -2,7 +2,7 @@ import pandas as pd
 from sqlalchemy.orm import Session
 from .models import (
     Bairro, TipoProprietario, Finalidade, FatorAntiguidade, 
-    PrecoReferencia, Endereco, Propriedade
+    PrecoReferencia, Endereco, Propriedade, FimipaIpra
 )
 from .database import SessionLocal
 import os
@@ -26,6 +26,7 @@ class DataImporter:
             self.import_enderecos()
             
             self.import_propriedades()
+            self.import_fimipa_ipra()
             
             print("Data import completed successfully!")
             
@@ -224,7 +225,6 @@ class DataImporter:
                         matriz=str(row['MATRIZ']) if pd.notna(row['MATRIZ']) else None,
                         nome=str(row['NOME']) if pd.notna(row['NOME']) else None,
                         cod_localizaca=str(row['Cod_LOCALIZACA']) if pd.notna(row['Cod_LOCALIZACA']) else None,
-                        endereco_cod=str(row['Cod_LOCALIZACA']) if pd.notna(row['Cod_LOCALIZACA']) else None,
                         nu_entrada=str(row['NU_ENTRADA']) if pd.notna(row['NU_ENTRADA']) else None,
                         andar_n=str(row['Andar_N']) if pd.notna(row['Andar_N']) else None,
                         flat=str(row['Flat']) if pd.notna(row['Flat']) else None,
@@ -264,3 +264,50 @@ class DataImporter:
                 self.db.rollback()
         
         print(f"Properties import completed! Imported: {imported_count}, Errors: {error_count}")
+    
+    def import_fimipa_ipra(self):
+        """Import FIMIPA2 IPRA values"""
+        file_path = os.path.join(os.path.dirname(__file__), "..", "data", "FIMIPA2.xlsx")
+        if not os.path.exists(file_path):
+            print(f"File not found: {file_path}")
+            return
+            
+        df = pd.read_excel(file_path)
+        print(f"Importing {len(df)} FIMIPA2 IPRA values...")
+        
+        df_unique = df.drop_duplicates(subset=['NCONTR'], keep='first')
+        print(f"After removing duplicates: {len(df_unique)} unique FIMIPA2 records")
+        
+        batch_size = 1000
+        imported_count = 0
+        error_count = 0
+        
+        for i in range(0, len(df_unique), batch_size):
+            batch = df_unique.iloc[i:i+batch_size]
+            
+            for _, row in batch.iterrows():
+                try:
+                    existing = self.db.query(FimipaIpra).filter(FimipaIpra.ncontr == int(row['NCONTR'])).first()
+                    if existing:
+                        continue
+                        
+                    fimipa_ipra = FimipaIpra(
+                        ncontr=int(row['NCONTR']),
+                        iimppag=float(row['IIMPPAG']) if pd.notna(row['IIMPPAG']) else None,
+                        ano=int(row['ANO'])
+                    )
+                    self.db.add(fimipa_ipra)
+                    imported_count += 1
+                except Exception as e:
+                    print(f"Error importing FIMIPA2 record {row['NCONTR']}: {e}")
+                    error_count += 1
+                    continue
+            
+            try:
+                self.db.commit()
+                print(f"Imported FIMIPA2 batch {i//batch_size + 1}/{(len(df_unique)-1)//batch_size + 1}")
+            except Exception as e:
+                print(f"Error committing FIMIPA2 batch: {e}")
+                self.db.rollback()
+        
+        print(f"FIMIPA2 IPRA values imported successfully! Imported: {imported_count}, Errors: {error_count}")

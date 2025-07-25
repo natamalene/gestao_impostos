@@ -7,7 +7,7 @@ from datetime import datetime
 import os
 
 from .database import get_db, create_tables
-from .models import Propriedade, Bairro, TipoProprietario, Finalidade, FatorAntiguidade, PrecoReferencia, Endereco
+from .models import Propriedade, Bairro, TipoProprietario, Finalidade, FatorAntiguidade, PrecoReferencia, Endereco, FimipaIpra
 from .tax_calculator import TaxCalculator
 from .data_importer import DataImporter
 
@@ -88,7 +88,7 @@ def get_properties(
     db: Session = Depends(get_db)
 ):
     """Get list of properties with pagination and search"""
-    query = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b1, isouter=True)
+    query = db.query(Propriedade).join(Endereco, Propriedade.cod_localizaca == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b1, isouter=True)
     
     if search:
         query = query.filter(
@@ -100,7 +100,6 @@ def get_properties(
     total = query.count()
     properties = query.offset(skip).limit(limit).all()
     
-    calculator = TaxCalculator(db)
     properties_with_ipra = []
     
     for prop in properties:
@@ -117,10 +116,10 @@ def get_properties(
             "localizacao": prop.endereco.morada if prop.endereco else prop.cod_localizaca
         }
         
-        try:
-            ipra_result = calculator.calculate_property_tax(prop.id)
-            property_data["ipra_value"] = ipra_result["ipra_tax"]
-        except Exception as e:
+        fimipa_ipra = db.query(FimipaIpra).filter(FimipaIpra.ncontr == prop.ncontr).first()
+        if fimipa_ipra and fimipa_ipra.iimppag is not None:
+            property_data["ipra_value"] = fimipa_ipra.iimppag
+        else:
             property_data["ipra_value"] = None
             
         properties_with_ipra.append(property_data)
@@ -135,7 +134,7 @@ def get_properties(
 @app.get("/api/properties/{property_id}")
 def get_property(property_id: int, db: Session = Depends(get_db)):
     """Get detailed information about a specific property"""
-    property = db.query(Propriedade).join(Endereco, Propriedade.endereco_cod == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b1, isouter=True).filter(Propriedade.id == property_id).first()
+    property = db.query(Propriedade).join(Endereco, Propriedade.cod_localizaca == Endereco.cod_r, isouter=True).join(Bairro, Propriedade.cod_bairro == Bairro.cod_b1, isouter=True).filter(Propriedade.id == property_id).first()
     if not property:
         raise HTTPException(status_code=404, detail="Property not found")
     
@@ -302,7 +301,7 @@ def create_property(property_data: PropertyCreateRequest, db: Session = Depends(
             cod_bairro=property_data.cod_bairro,
             proprietar=property_data.proprietar,
             nuit=property_data.nuit,
-            endereco_cod=property_data.endereco_cod,
+            cod_localizaca=property_data.endereco_cod,
             finalidade_id=property_data.finalidade_id,
             are_tereno=property_data.are_tereno,
             are_constr=property_data.are_constr,
