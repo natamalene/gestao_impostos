@@ -29,6 +29,18 @@ class PropertyCreateRequest(BaseModel):
     are_constr: str | None = None
     factant: str | None = None
 
+class PropertyUpdateRequest(BaseModel):
+    nome: str | None = None
+    matriz: str | None = None
+    cod_bairro: int | None = None
+    proprietar: int | None = None
+    nuit: str | None = None
+    endereco_cod: str | None = None
+    finalidade_id: int | None = None
+    are_tereno: str | None = None
+    are_constr: str | None = None
+    factant: str | None = None
+
 class TaxSimulationRequest(BaseModel):
     built_area: float
     construction_price: float | None = None
@@ -79,6 +91,68 @@ def import_data():
         return {"message": "Data imported successfully"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error importing data: {str(e)}")
+
+@app.put("/api/properties/{property_id}")
+def update_property(property_id: int, property_data: PropertyUpdateRequest, db: Session = Depends(get_db)):
+    """Update an existing property with automatic value recalculation"""
+    try:
+        property = db.query(Propriedade).filter(Propriedade.id == property_id).first()
+        if not property:
+            raise HTTPException(status_code=404, detail="Property not found")
+        
+        recalculate_needed = False
+        value_fields = ['cod_bairro', 'finalidade_id', 'are_tereno', 'are_constr', 'factant']
+        
+        for field, value in property_data.dict(exclude_unset=True).items():
+            if hasattr(property, field):
+                old_value = getattr(property, field)
+                if field in value_fields and old_value != value:
+                    recalculate_needed = True
+                if field == 'endereco_cod':
+                    setattr(property, 'cod_localizaca', value)
+                else:
+                    setattr(property, field, value)
+        
+        if recalculate_needed:
+            calculator = TaxCalculator(db)
+            
+            are_constr_str = str(property.are_constr).replace(',', '.') if property.are_constr else "100.0"
+            are_tereno_str = str(property.are_tereno).replace(',', '.') if property.are_tereno else "0.0"
+            
+            built_area = float(are_constr_str)
+            logradouro_area = float(are_tereno_str)
+            
+            construction_price = calculator.get_construction_price(2025)
+            age_factor = calculator.get_age_factor(property.factant, property.finalidade_id) if property.factant else 1.0
+            location_factor = calculator.get_neighborhood_factor(property.cod_bairro)
+            property_type = "commercial" if property.finalidade_id == 2 else "residential"
+            
+            ipra_result = calculator.calculate_ipra_tax(
+                built_area=built_area,
+                construction_price=construction_price,
+                age_factor=age_factor,
+                logradouro_area=logradouro_area,
+                location_factor=location_factor,
+                property_type=property_type
+            )
+            
+            property.valpatr = ipra_result["patrimonial_value"]
+        
+        db.commit()
+        db.refresh(property)
+        
+        return {
+            "message": "Property updated successfully",
+            "id": property.id,
+            "codigo": property.ncontr,
+            "valor_patrimonial": property.valpatr,
+            "recalculated": recalculate_needed
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error updating property: {str(e)}")
 
 @app.get("/api/properties")
 def get_properties(
