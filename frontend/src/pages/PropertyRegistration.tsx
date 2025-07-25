@@ -52,7 +52,6 @@ export function PropertyRegistration() {
   const [formData, setFormData] = useState({
     nome: '',
     matriz: '',
-    valpatr: '',
     cod_bairro: '',
     proprietar: '',
     nuit: '',
@@ -104,7 +103,7 @@ export function PropertyRegistration() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!formData.nome || !formData.valpatr || !formData.cod_bairro) {
+    if (!formData.nome || !formData.cod_bairro) {
       alert('Por favor, preencha todos os campos obrigatórios')
       return
     }
@@ -119,7 +118,6 @@ export function PropertyRegistration() {
         body: JSON.stringify({
           nome: formData.nome,
           matriz: formData.matriz || null,
-          valpatr: parseFloat(formData.valpatr),
           cod_bairro: parseInt(formData.cod_bairro),
           proprietar: formData.proprietar ? parseInt(formData.proprietar) : null,
           nuit: formData.nuit || null,
@@ -136,7 +134,6 @@ export function PropertyRegistration() {
         setFormData({
           nome: '',
           matriz: '',
-          valpatr: '',
           cod_bairro: '',
           proprietar: '',
           nuit: '',
@@ -187,7 +184,7 @@ export function PropertyRegistration() {
         <CardHeader>
           <CardTitle>Dados da Propriedade</CardTitle>
           <CardDescription>
-            Preencha as informações da propriedade. O CÓDIGO será gerado automaticamente pelo sistema. Campos marcados com * são obrigatórios.
+            Preencha as informações da propriedade. O CÓDIGO e Valor Patrimonial serão calculados automaticamente pelo sistema usando a fórmula IPRA. Campos marcados com * são obrigatórios.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -213,19 +210,6 @@ export function PropertyRegistration() {
                   placeholder="Código da matriz"
                   value={formData.matriz}
                   onChange={(e) => handleInputChange('matriz', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="valpatr">Valor Patrimonial (MZN) *</Label>
-                <Input
-                  id="valpatr"
-                  type="number"
-                  step="0.01"
-                  placeholder="Ex: 1000000"
-                  value={formData.valpatr}
-                  onChange={(e) => handleInputChange('valpatr', e.target.value)}
-                  required
                 />
               </div>
 
