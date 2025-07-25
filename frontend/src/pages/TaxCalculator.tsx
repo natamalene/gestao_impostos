@@ -98,8 +98,8 @@ export function TaxCalculator() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Calculadora de Imposto</h1>
-        <p className="text-gray-600">Calcule o imposto predial com parâmetros personalizados</p>
+        <h1 className="text-3xl font-bold text-gray-900">Calculadora de Imposto Predial (IPRA)</h1>
+        <p className="text-gray-600">Calcule o IPRA usando a fórmula oficial: Vipra = Vp × taxa</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -107,7 +107,7 @@ export function TaxCalculator() {
           <CardHeader>
             <CardTitle>Parâmetros de Cálculo</CardTitle>
             <CardDescription>
-              Insira os valores para calcular o imposto predial
+              Insira os valores para calcular o IPRA usando a fórmula oficial
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -185,7 +185,7 @@ export function TaxCalculator() {
                 Resultado do Cálculo
               </CardTitle>
               <CardDescription>
-                Fórmula: Valor Base × Fator do Bairro × Fator de Antiguidade
+                Fórmula IPRA: Vipra = Vp × taxa, onde Vp = (Ae × P × Fa + 0,00 × Al × P) × Fl
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -236,11 +236,28 @@ export function TaxCalculator() {
               </p>
             </div>
             <div>
-              <h4 className="font-medium">Tipos de Propriedade</h4>
+              <h4 className="font-medium">Taxas de Imposto</h4>
               <p className="text-sm text-gray-600">
-                Residencial: Para habitação<br/>
-                Comercial: Para atividades comerciais
+                <strong>Residencial:</strong> 0,4% do valor patrimonial<br/>
+                <strong>Comercial/Industrial:</strong> 0,7% do valor patrimonial
               </p>
+            </div>
+            <div>
+              <h4 className="font-medium">Fórmula IPRA</h4>
+              <p className="text-sm text-gray-600">
+                <strong>Vipra = Vp × taxa</strong><br/>
+                Onde <strong>Vp = (Ae × P × Fa + 0,00 × Al × P) × Fl</strong>
+              </p>
+            </div>
+            <div>
+              <h4 className="font-medium">Variáveis</h4>
+              <ul className="text-sm text-gray-600 space-y-1">
+                <li><strong>Ae:</strong> Área edificada do prédio urbano</li>
+                <li><strong>P:</strong> Preço médio de construção por m²</li>
+                <li><strong>Fa:</strong> Fator de antiguidade do prédio</li>
+                <li><strong>Al:</strong> Área do terreno (coeficiente 0,00)</li>
+                <li><strong>Fl:</strong> Fator de localização do prédio</li>
+              </ul>
             </div>
           </CardContent>
         </Card>
