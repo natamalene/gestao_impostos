@@ -18,7 +18,6 @@ app = FastAPI(
 )
 
 class PropertyCreateRequest(BaseModel):
-    ncontr: int
     nome: str
     matriz: str | None = None
     valpatr: float
@@ -34,8 +33,9 @@ class PropertyCreateRequest(BaseModel):
 class TaxSimulationRequest(BaseModel):
     built_area: float
     construction_price: float | None = None
+    construction_year: int = 2025
     age_factor_code: str | None = None
-    land_area: float = 0.0
+    logradouro_area: float = 0.0
     neighborhood_code: int
     property_type: str = "residential"
 
@@ -108,7 +108,7 @@ def get_properties(
         "properties": [
             {
                 "id": prop.id,
-                "ncontr": prop.ncontr,
+                "codigo": prop.ncontr,
                 "nome": prop.nome,
                 "matriz": prop.matriz,
                 "valpatr": prop.valpatr,
@@ -131,7 +131,7 @@ def get_property(property_id: int, db: Session = Depends(get_db)):
     
     return {
         "id": property.id,
-        "ncontr": property.ncontr,
+        "codigo": property.ncontr,
         "nome": property.nome,
         "matriz": property.matriz,
         "valpatr": property.valpatr,
@@ -225,7 +225,7 @@ def calculate_custom_tax(
     try:
         calculator = TaxCalculator(db)
         
-        built_area = base_value / 15000.0 if base_value > 0 else 100.0
+        built_area = base_value / 9143.73 if base_value > 0 else 100.0
         construction_price = calculator.get_construction_price()
         age_factor = calculator.get_age_factor(age_factor_code, 2 if property_type == "commercial" else 1)
         location_factor = calculator.get_neighborhood_factor(neighborhood_code)
@@ -234,7 +234,7 @@ def calculate_custom_tax(
             built_area=built_area,
             construction_price=construction_price,
             age_factor=age_factor,
-            land_area=0.0,
+            logradouro_area=0.0,
             location_factor=location_factor,
             property_type=property_type
         )
@@ -251,23 +251,22 @@ def calculate_custom_tax(
 
 @app.post("/api/properties")
 def create_property(property_data: PropertyCreateRequest, db: Session = Depends(get_db)):
-    """Create a new property"""
+    """Create a new property with auto-generated CODIGO"""
     try:
-        print(f"DEBUG: Received property data: {property_data}")
-        print(f"DEBUG: NCONTR: {property_data.ncontr}, type: {type(property_data.ncontr)}")
-        print(f"DEBUG: cod_bairro: {property_data.cod_bairro}, type: {type(property_data.cod_bairro)}")
-        
-        existing = db.query(Propriedade).filter(Propriedade.ncontr == property_data.ncontr).first()
-        if existing:
-            print(f"DEBUG: Property with NCONTR {property_data.ncontr} already exists")
-            raise HTTPException(status_code=400, detail="Property with this NCONTR already exists")
+        max_codigo = db.query(Propriedade).order_by(Propriedade.ncontr.desc()).first()
+        new_codigo = (max_codigo.ncontr + 1) if max_codigo else 1000000
         
         bairro = db.query(Bairro).filter(Bairro.cod_b1 == property_data.cod_bairro).first()
         if not bairro:
             raise HTTPException(status_code=400, detail="Invalid neighborhood code")
         
+        if property_data.factant:
+            age_factor = db.query(FatorAntiguidade).filter(FatorAntiguidade.cod == property_data.factant).first()
+            if not age_factor:
+                raise HTTPException(status_code=400, detail="Invalid age factor code")
+        
         new_property = Propriedade(
-            ncontr=property_data.ncontr,
+            ncontr=new_codigo,
             nome=property_data.nome,
             matriz=property_data.matriz,
             valpatr=property_data.valpatr,
@@ -286,7 +285,7 @@ def create_property(property_data: PropertyCreateRequest, db: Session = Depends(
         db.commit()
         db.refresh(new_property)
         
-        return {"message": "Property created successfully", "id": new_property.id, "ncontr": new_property.ncontr}
+        return {"message": "Property created successfully", "id": new_property.id, "codigo": new_property.ncontr}
     except HTTPException:
         raise
     except Exception as e:
@@ -299,7 +298,7 @@ def simulate_tax(simulation_data: TaxSimulationRequest, db: Session = Depends(ge
     try:
         calculator = TaxCalculator(db)
         
-        construction_price = simulation_data.construction_price or calculator.get_construction_price()
+        construction_price = simulation_data.construction_price or calculator.get_construction_price(simulation_data.construction_year)
         
         age_factor = 1.0
         if simulation_data.age_factor_code:
@@ -312,7 +311,7 @@ def simulate_tax(simulation_data: TaxSimulationRequest, db: Session = Depends(ge
             built_area=simulation_data.built_area,
             construction_price=construction_price,
             age_factor=age_factor,
-            land_area=simulation_data.land_area,
+            logradouro_area=simulation_data.logradouro_area,
             location_factor=location_factor,
             property_type=simulation_data.property_type
         )

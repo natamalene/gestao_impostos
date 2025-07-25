@@ -8,6 +8,8 @@ export function Navbar() {
     { path: '/', label: 'Dashboard', icon: Home },
     { path: '/properties', label: 'Propriedades', icon: Building },
     { path: '/calculator', label: 'Calculadora', icon: Calculator },
+    { path: '/register', label: 'Cadastrar', icon: Upload },
+    { path: '/simulation', label: 'Simulação', icon: Calculator },
     { path: '/import', label: 'Importar Dados', icon: Upload },
   ]
 

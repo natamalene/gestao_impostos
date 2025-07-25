@@ -7,13 +7,15 @@ import { Search, Eye, Calculator } from 'lucide-react'
 
 interface Property {
   id: number
-  ncontr: number
+  codigo: number
   nome: string
   matriz: string
   valpatr: number
   cod_bairro: number
+  bairro: string
   proprietar: number
   nuit: string
+  localizacao: string
 }
 
 interface PropertiesResponse {
@@ -123,10 +125,11 @@ export function Properties() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-2">NCONTR</th>
+                      <th className="text-left p-2">CÓDIGO</th>
                       <th className="text-left p-2">Nome</th>
                       <th className="text-left p-2">Matriz</th>
                       <th className="text-left p-2">Valor Patrimonial</th>
+                      <th className="text-left p-2">Localização</th>
                       <th className="text-left p-2">Bairro</th>
                       <th className="text-left p-2">Ações</th>
                     </tr>
@@ -134,13 +137,14 @@ export function Properties() {
                   <tbody>
                     {properties.map((property) => (
                       <tr key={property.id} className="border-b hover:bg-gray-50">
-                        <td className="p-2">{property.ncontr}</td>
+                        <td className="p-2">{property.codigo}</td>
                         <td className="p-2">{property.nome || 'N/A'}</td>
                         <td className="p-2">{property.matriz || 'N/A'}</td>
                         <td className="p-2">
                           {property.valpatr ? formatCurrency(property.valpatr) : 'N/A'}
                         </td>
-                        <td className="p-2">{property.cod_bairro || 'N/A'}</td>
+                        <td className="p-2">{property.localizacao || 'N/A'}</td>
+                        <td className="p-2">{property.bairro || 'N/A'}</td>
                         <td className="p-2">
                           <div className="flex gap-2">
                             <Link to={`/properties/${property.id}`}>

@@ -6,14 +6,16 @@ import { ArrowLeft, Calculator, Building, User, MapPin } from 'lucide-react'
 
 interface Property {
   id: number
-  ncontr: number
+  codigo: number
   nome: string
   matriz: string
   valpatr: number
   cod_bairro: number
+  bairro: string
   proprietar: number
   nuit: string
   cod_localizaca: string
+  localizacao: string
   nu_entrada: string
   andar_n: string
   flat: string
@@ -125,7 +127,7 @@ export function PropertyDetails() {
 
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          {property.nome || `Propriedade ${property.ncontr}`}
+          {property.nome || `Propriedade ${property.codigo}`}
         </h1>
         <p className="text-gray-600">Detalhes da propriedade e cálculo de imposto</p>
       </div>
@@ -141,8 +143,8 @@ export function PropertyDetails() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-gray-500">NCONTR</label>
-                <p className="text-lg">{property.ncontr}</p>
+                <label className="text-sm font-medium text-gray-500">CÓDIGO</label>
+                <p className="text-lg">{property.codigo}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Matriz</label>
@@ -155,11 +157,11 @@ export function PropertyDetails() {
                 </p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Código do Bairro</label>
-                <p className="text-lg">{property.cod_bairro || 'N/A'}</p>
+                <label className="text-sm font-medium text-gray-500">Bairro</label>
+                <p className="text-lg">{property.bairro || 'N/A'}</p>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-500">Área do Terreno</label>
+                <label className="text-sm font-medium text-gray-500">Área de Logradouro</label>
                 <p className="text-lg">{property.are_tereno || 'N/A'}</p>
               </div>
               <div>
@@ -181,7 +183,7 @@ export function PropertyDetails() {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Localização</label>
-                <p className="text-lg">{property.cod_localizaca || 'N/A'}</p>
+                <p className="text-lg">{property.localizacao || 'N/A'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Número de Entrada</label>

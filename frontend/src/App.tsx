@@ -4,6 +4,8 @@ import { Dashboard } from './pages/Dashboard'
 import { Properties } from './pages/Properties'
 import { PropertyDetails } from './pages/PropertyDetails'
 import { TaxCalculator } from './pages/TaxCalculator'
+import { PropertyRegistration } from './pages/PropertyRegistration'
+import { TaxSimulation } from './pages/TaxSimulation'
 import { DataImport } from './pages/DataImport'
 
 function App() {
@@ -17,6 +19,8 @@ function App() {
             <Route path="/properties" element={<Properties />} />
             <Route path="/properties/:id" element={<PropertyDetails />} />
             <Route path="/calculator" element={<TaxCalculator />} />
+            <Route path="/register" element={<PropertyRegistration />} />
+            <Route path="/simulation" element={<TaxSimulation />} />
             <Route path="/import" element={<DataImport />} />
           </Routes>
         </main>

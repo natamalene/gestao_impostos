@@ -8,16 +8,17 @@ class TaxCalculator:
         self.db = db
     
     def calculate_ipra_tax(self, built_area: float, construction_price: float, 
-                          age_factor: float, land_area: float, location_factor: float, 
+                          age_factor: float, logradouro_area: float, location_factor: float, 
                           property_type: str = "residential") -> Dict:
         """
         Calculate IPRA tax using official formula from Article 4:
         Vipra = Vp × taxa
         Where Vp = (Ae × P × Fa + 0,00 × Al × P) × Fl
+        Al = Área do terreno que serve de logradouro ao prédio urbano
         """
-        vp = (built_area * construction_price * age_factor + 0.00 * land_area * construction_price) * location_factor
+        vp = (built_area * construction_price * age_factor + 0.00 * logradouro_area * construction_price) * location_factor
         
-        tax_rate = 0.001 if property_type == "residential" else 0.002
+        tax_rate = 0.004 if property_type == "residential" else 0.007
         
         vipra = vp * tax_rate
         
@@ -29,9 +30,9 @@ class TaxCalculator:
                 "built_area": built_area,
                 "construction_price": construction_price,
                 "age_factor": age_factor,
-                "land_area": land_area,
+                "logradouro_area": logradouro_area,
                 "location_factor": location_factor,
-                "calculation": f"({built_area} × {construction_price} × {age_factor} + 0.00 × {land_area} × {construction_price}) × {location_factor} × {tax_rate}"
+                "calculation": f"({built_area} × {construction_price} × {age_factor} + 0.00 × {logradouro_area} × {construction_price}) × {location_factor} × {tax_rate}"
             }
         }
     
@@ -44,14 +45,14 @@ class TaxCalculator:
             raise ValueError(f"Property with ID {property_id} not found")
         
         built_area = float(propriedade.are_constr) if propriedade.are_constr else 100.0
-        land_area = float(propriedade.are_tereno) if propriedade.are_tereno else 0.0
+        logradouro_area = float(propriedade.are_tereno) if propriedade.are_tereno else 0.0
         construction_price = self.get_construction_price()
         age_factor = self.get_age_factor(propriedade.factant, propriedade.finalidade_id)
         location_factor = self.get_neighborhood_factor(propriedade.cod_bairro)
         property_type = "commercial" if propriedade.finalidade_id == 2 else "residential"
         
         result = self.calculate_ipra_tax(built_area, construction_price, age_factor, 
-                                       land_area, location_factor, property_type)
+                                       logradouro_area, location_factor, property_type)
         
         result.update({
             "property_id": property_id,
@@ -83,10 +84,14 @@ class TaxCalculator:
         else:
             return fator.tiphab
     
-    def get_construction_price(self) -> float:
-        """Get current construction price per square meter"""
-        preco = self.db.query(PrecoReferencia).order_by(PrecoReferencia.ano.desc()).first()
-        return preco.preco if preco else 15000.0
+    def get_construction_price(self, year: int = 2025) -> float:
+        """Get construction price per square meter for specific year"""
+        construction_prices = {
+            2025: 9143.73, 2024: 9143.73, 2023: 9143.73, 2022: 9143.73, 2021: 9143.73,
+            2020: 9143.73, 2019: 9143.73, 2018: 9143.73, 2017: 9143.73, 2016: 9143.73,
+            2015: 9143.73, 2014: 7284.82, 2013: 6898.0, 2012: 6132.0, 2011: 5600.0
+        }
+        return construction_prices.get(year, 9143.73)
     
     def calculate_bulk_taxes(self, limit: int = 100) -> list:
         """Calculate taxes for multiple properties"""
