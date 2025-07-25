@@ -100,25 +100,36 @@ def get_properties(
     total = query.count()
     properties = query.offset(skip).limit(limit).all()
     
+    calculator = TaxCalculator(db)
+    properties_with_ipra = []
+    
+    for prop in properties:
+        property_data = {
+            "id": prop.id,
+            "codigo": prop.ncontr,
+            "nome": prop.nome,
+            "matriz": prop.matriz,
+            "valpatr": prop.valpatr,
+            "cod_bairro": prop.cod_bairro,
+            "bairro": prop.bairro.descricao if prop.bairro else f"Bairro {prop.cod_bairro}",
+            "proprietar": prop.proprietar,
+            "nuit": prop.nuit,
+            "localizacao": prop.endereco.morada if prop.endereco else prop.cod_localizaca
+        }
+        
+        try:
+            ipra_result = calculator.calculate_property_tax(prop.id)
+            property_data["ipra_value"] = ipra_result["ipra_tax"]
+        except Exception as e:
+            property_data["ipra_value"] = None
+            
+        properties_with_ipra.append(property_data)
+    
     return {
         "total": total,
         "skip": skip,
         "limit": limit,
-        "properties": [
-            {
-                "id": prop.id,
-                "codigo": prop.ncontr,
-                "nome": prop.nome,
-                "matriz": prop.matriz,
-                "valpatr": prop.valpatr,
-                "cod_bairro": prop.cod_bairro,
-                "bairro": prop.bairro.descricao if prop.bairro else f"Bairro {prop.cod_bairro}",
-                "proprietar": prop.proprietar,
-                "nuit": prop.nuit,
-                "localizacao": prop.endereco.morada if prop.endereco else prop.cod_localizaca
-            }
-            for prop in properties
-        ]
+        "properties": properties_with_ipra
     }
 
 @app.get("/api/properties/{property_id}")
