@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "tax-system-django"
+version = "0.1.0"
+description = "Django Tax Management System"
+authors = ["Devin AI <devin-ai-integration[bot]@users.noreply.github.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+Django = "5.2.4"
+djangorestframework = "3.15.2"
+django-cors-headers = "4.6.0"
+django-simple-history = "3.8.0"
+psycopg2-binary = "2.9.10"
+pandas = "2.3.1"
+openpyxl = "3.1.5"
+gunicorn = "^21.2.0"
+uvicorn = "^0.24.0"
+fastapi = "^0.116.1"
+httpx = "^0.28.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
