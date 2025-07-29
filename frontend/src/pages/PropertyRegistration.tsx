@@ -15,28 +15,28 @@ interface Neighborhood {
 
 interface OwnerType {
   id: number
-  codigo: number
-  descricao: string
+  code: number
+  description: string
 }
 
 interface Purpose {
   id: number
-  codigo: number
-  descricao: string
+  code: number
+  description: string
 }
 
 interface Address {
   id: number
-  cod_r: string
-  morada: string
+  cod_r: number
+  street_name: string
 }
 
 interface AgeFactor {
   id: number
-  cod: string
+  code: string
   id_range: string
-  tiphab: number
-  tipcom: number
+  residential_factor: number
+  commercial_factor: number
 }
 
 export function PropertyRegistration() {
@@ -46,8 +46,10 @@ export function PropertyRegistration() {
   const [addresses, setAddresses] = useState<Address[]>([])
   const [ageFactors, setAgeFactors] = useState<AgeFactor[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [createdProperty, setCreatedProperty] = useState<{codigo: number, valor_patrimonial: number} | null>(null)
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -65,13 +67,18 @@ export function PropertyRegistration() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        setError(null)
         const [neighborhoodsRes, ownerTypesRes, purposesRes, addressesRes, ageFactorsRes] = await Promise.all([
-          fetch(`${(import.meta as any).env.VITE_API_URL}/api/neighborhoods`),
-          fetch(`${(import.meta as any).env.VITE_API_URL}/api/owner-types`),
-          fetch(`${(import.meta as any).env.VITE_API_URL}/api/purposes`),
-          fetch(`${(import.meta as any).env.VITE_API_URL}/api/addresses`),
-          fetch(`${(import.meta as any).env.VITE_API_URL}/api/age-factors`)
+          fetch(`${(import.meta as any).env.VITE_API_URL}/api/neighborhoods/`),
+          fetch(`${(import.meta as any).env.VITE_API_URL}/api/owner-types/`),
+          fetch(`${(import.meta as any).env.VITE_API_URL}/api/purposes/`),
+          fetch(`${(import.meta as any).env.VITE_API_URL}/api/addresses/`),
+          fetch(`${(import.meta as any).env.VITE_API_URL}/api/age-factors/`)
         ])
+
+        if (!neighborhoodsRes.ok || !ownerTypesRes.ok || !purposesRes.ok || !addressesRes.ok || !ageFactorsRes.ok) {
+          throw new Error('Failed to fetch data from API')
+        }
 
         const [neighborhoodsData, ownerTypesData, purposesData, addressesData, ageFactorsData] = await Promise.all([
           neighborhoodsRes.json(),
@@ -81,13 +88,14 @@ export function PropertyRegistration() {
           ageFactorsRes.json()
         ])
 
-        setNeighborhoods(neighborhoodsData)
-        setOwnerTypes(ownerTypesData)
-        setPurposes(purposesData)
-        setAddresses(addressesData)
-        setAgeFactors(ageFactorsData)
+        setNeighborhoods(Array.isArray(neighborhoodsData) ? neighborhoodsData : [])
+        setOwnerTypes(Array.isArray(ownerTypesData) ? ownerTypesData : [])
+        setPurposes(Array.isArray(purposesData) ? purposesData : [])
+        setAddresses(Array.isArray(addressesData) ? addressesData : [])
+        setAgeFactors(Array.isArray(ageFactorsData) ? ageFactorsData : [])
       } catch (error) {
         console.error('Error fetching data:', error)
+        setError('Erro ao carregar dados. Tente novamente.')
       } finally {
         setLoading(false)
       }
@@ -130,7 +138,12 @@ export function PropertyRegistration() {
       })
 
       if (response.ok) {
+        const result = await response.json()
         setSuccess(true)
+        setCreatedProperty({
+          codigo: result.codigo,
+          valor_patrimonial: result.valor_patrimonial
+        })
         setFormData({
           nome: '',
           matriz: '',
@@ -143,7 +156,10 @@ export function PropertyRegistration() {
           are_constr: '',
           factant: ''
         })
-        setTimeout(() => setSuccess(false), 3000)
+        setTimeout(() => {
+          setSuccess(false)
+          setCreatedProperty(null)
+        }, 5000)
       } else {
         const error = await response.json()
         alert(`Erro: ${error.detail}`)
@@ -164,6 +180,14 @@ export function PropertyRegistration() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-lg text-red-600">{error}</div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -171,11 +195,22 @@ export function PropertyRegistration() {
         <p className="text-gray-600">Registre uma nova propriedade no sistema</p>
       </div>
 
-      {success && (
+      {success && createdProperty && (
         <div className="bg-green-50 border border-green-200 rounded-md p-4">
-          <div className="flex items-center">
+          <div className="flex items-center mb-2">
             <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
-            <p className="text-green-800">Propriedade cadastrada com sucesso!</p>
+            <p className="text-green-800 font-semibold">Propriedade cadastrada com sucesso!</p>
+          </div>
+          <div className="ml-7 space-y-1">
+            <p className="text-green-700">
+              <strong>CÓDIGO atribuído:</strong> {createdProperty.codigo}
+            </p>
+            <p className="text-green-700">
+              <strong>Valor Patrimonial calculado:</strong> {new Intl.NumberFormat('pt-MZ', {
+                style: 'currency',
+                currency: 'MZN'
+              }).format(createdProperty.valor_patrimonial)}
+            </p>
           </div>
         </div>
       )}
@@ -220,7 +255,7 @@ export function PropertyRegistration() {
                     <SelectValue placeholder="Selecione um bairro" />
                   </SelectTrigger>
                   <SelectContent>
-                    {neighborhoods.map((neighborhood) => (
+                    {neighborhoods.filter(neighborhood => neighborhood && neighborhood.cod_b1 && neighborhood.descricao).map((neighborhood) => (
                       <SelectItem key={neighborhood.id} value={neighborhood.cod_b1.toString()}>
                         {neighborhood.descricao}
                       </SelectItem>
@@ -236,9 +271,9 @@ export function PropertyRegistration() {
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ownerTypes.map((type) => (
-                      <SelectItem key={type.id} value={type.codigo.toString()}>
-                        {type.descricao}
+                    {ownerTypes.filter(type => type && type.code && type.description).map((type) => (
+                      <SelectItem key={type.id} value={type.code.toString()}>
+                        {type.description}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -263,9 +298,9 @@ export function PropertyRegistration() {
                     <SelectValue placeholder="Selecione o endereço" />
                   </SelectTrigger>
                   <SelectContent>
-                    {addresses.map((address) => (
-                      <SelectItem key={address.id} value={address.cod_r}>
-                        {address.morada}
+                    {addresses.filter(address => address && address.cod_r && address.street_name).map((address) => (
+                      <SelectItem key={address.id} value={address.cod_r.toString()}>
+                        {address.street_name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -279,9 +314,9 @@ export function PropertyRegistration() {
                     <SelectValue placeholder="Selecione a finalidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {purposes.map((purpose) => (
-                      <SelectItem key={purpose.id} value={purpose.codigo.toString()}>
-                        {purpose.descricao}
+                    {purposes.filter(purpose => purpose && purpose.code && purpose.description).map((purpose) => (
+                      <SelectItem key={purpose.id} value={purpose.code.toString()}>
+                        {purpose.description}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -318,9 +353,9 @@ export function PropertyRegistration() {
                     <SelectValue placeholder="Selecione o fator de antiguidade" />
                   </SelectTrigger>
                   <SelectContent>
-                    {ageFactors.map((factor) => (
-                      <SelectItem key={factor.id} value={factor.cod}>
-                        {factor.cod} - {factor.id_range}
+                    {ageFactors.filter(factor => factor && factor.code && factor.id_range).map((factor) => (
+                      <SelectItem key={factor.id} value={factor.code}>
+                        {factor.code} - {factor.id_range}
                       </SelectItem>
                     ))}
                   </SelectContent>
